@@ -1,0 +1,13 @@
+Running 30s test @ http://127.0.0.1:15555/generate_url
+  4 threads and 100 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     2.22ms    1.04ms  32.16ms   90.18%
+    Req/Sec    11.51k   827.65    13.08k    78.50%
+  Latency Distribution
+     50%    2.11ms
+     75%    2.62ms
+     90%    3.07ms
+     99%    4.31ms
+  1374404 requests in 30.00s, 246.42MB read
+Requests/sec:  45807.62
+Transfer/sec:      8.21MB
