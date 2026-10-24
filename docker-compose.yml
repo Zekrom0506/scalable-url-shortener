@@ -1,0 +1,66 @@
+# 3 Rust backends behind an Nginx load balancer, sharing one Redis.
+#   docker compose up -d --build                      -> redis + 3 backends + nginx
+#   docker compose --profile frontend up -d --build   -> also starts the Next.js UI
+x-backend: &backend
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+  environment: &backend-env
+    API_KEY: ${API_KEY}
+    REDIS_URL: redis://redis:6379/
+  ulimits:
+    nofile: { soft: 65535, hard: 65535 }
+  healthcheck:
+    test: ["CMD", "wget", "-qO-", "http://localhost:8000/ping"]
+    interval: 5s
+    timeout: 3s
+    retries: 5
+  depends_on:
+    - redis
+  restart: unless-stopped
+
+services:
+  backend1:
+    <<: *backend
+    environment: { <<: *backend-env, NODE_ID: "1" }   # Snowflake node id
+    ports: ["15555:8000"]
+
+  backend2:
+    <<: *backend
+    environment: { <<: *backend-env, NODE_ID: "2" }
+    ports: ["15556:8000"]
+
+  backend3:
+    <<: *backend
+    environment: { <<: *backend-env, NODE_ID: "3" }
+    ports: ["15557:8000"]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxclients", "20000"]
+    ports: ["6379:6379"]
+    ulimits:
+      nofile: { soft: 65535, hard: 65535 }
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports: ["80:80"]
+    ulimits:
+      nofile: { soft: 65535, hard: 65535 }
+    depends_on:
+      - backend1
+      - backend2
+      - backend3
+
+  frontend:
+    profiles: ["frontend"]
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports: ["3000:3000"]
+    environment:
+      - HOST=0.0.0.0
+    depends_on:
+      - nginx
